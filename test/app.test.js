@@ -1,19 +1,22 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
 const http = require('http');
-const assert = require('assert');
 const app = require('../src/app');
 
-const server = http.createServer(app);
-
-server.listen(0, () => {
+test('GET / returns Hello World', async () => {
+  const server = http.createServer(app);
+  await new Promise(r => server.listen(0, r));
   const port = server.address().port;
-  http.get(`http://localhost:${port}`, (res) => {
-    assert.strictEqual(res.statusCode, 200);
-
-    let data = '';
-    res.on('data', (chunk) => { data += chunk; });
-    res.on('end', () => {
-      assert.strictEqual(JSON.parse(data).message, 'Hello World');
-      server.close();
-    });
+  const body = await new Promise((resolve, reject) => {
+    http.get('http://localhost:' + port, res => {
+      assert.strictEqual(res.statusCode, 200);
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => resolve(d));
+      res.on('error', reject);
+    }).on('error', reject);
   });
+  const parsed = JSON.parse(body);
+  assert.strictEqual(parsed.message, 'Hello World');
+  server.close();
 });
